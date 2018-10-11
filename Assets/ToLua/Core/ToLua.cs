@@ -46,7 +46,7 @@ namespace LuaInterface
 
 #if UNITY_EDITOR
         static int _instanceID = -1;
-        static int _line = 200;
+        static int _line = 201;
         private static object consoleWindow;
         private static object logListView;
         private static FieldInfo logListViewCurrentRow;
@@ -155,14 +155,15 @@ namespace LuaInterface
                     int line = LuaDLL.tolua_where(L, 1);
                     string filename = LuaDLL.lua_tostring(L, -1);
                     LuaDLL.lua_settop(L, n);
+                    int offset = filename[0] == '@' ? 1 : 0;
 
                     if (!filename.Contains("."))
                     {
-                        sb.Append('[').Append(filename).Append(".lua:").Append(line).Append("]:");
+                        sb.Append('[').Append(filename, offset, filename.Length - offset).Append(".lua:").Append(line).Append("]:");
                     }
                     else
                     {
-                        sb.Append('[').Append(filename).Append(':').Append(line).Append("]:");
+                        sb.Append('[').Append(filename, offset, filename.Length - offset).Append(':').Append(line).Append("]:");
                     }
 #endif
 
@@ -226,9 +227,9 @@ namespace LuaInterface
                 if (LuaConst.openLuaDebugger)
                 {
                     fileName = LuaFileUtils.Instance.FindFile(fileName);
-                }
+                }                
 
-                if (LuaDLL.luaL_loadbuffer(L, buffer, buffer.Length, fileName) != 0)
+                if (LuaDLL.luaL_loadbuffer(L, buffer, buffer.Length, "@"+ fileName) != 0)
                 {
                     string err = LuaDLL.lua_tostring(L, -1);
                     throw new LuaException(err, LuaException.GetLastError());
@@ -454,7 +455,7 @@ namespace LuaInterface
                 FieldInfo listViewFieldInfo = consoleWindowType.GetField("m_ListView", BindingFlags.Instance | BindingFlags.NonPublic);
                 logListView = listViewFieldInfo.GetValue(consoleWindow);
                 logListViewCurrentRow = listViewFieldInfo.FieldType.GetField("row", BindingFlags.Instance | BindingFlags.Public);
-#if UNITY_2017
+#if UNITY_2017_1_OR_NEWER
                 Type logEntriesType = unityEditorAssembly.GetType("UnityEditor.LogEntries");
                 LogEntriesGetEntry = logEntriesType.GetMethod("GetEntryInternal", BindingFlags.Static | BindingFlags.Public);
                 Type logEntryType = unityEditorAssembly.GetType("UnityEditor.LogEntry");                
@@ -2631,7 +2632,7 @@ namespace LuaInterface
 
         public static void PushSealed<T>(IntPtr L, T o)
         {
-            if (o == null)
+            if (o == null || o.Equals(null))
             {
                 LuaDLL.lua_pushnil(L);
             }
